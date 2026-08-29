@@ -1,0 +1,7 @@
+appId: ${APP_ID}
+name: P0 isolated application smoke
+tags: [p0, physical]
+---
+- clearState
+- launchApp
+- assertVisible: "Start session"

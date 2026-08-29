@@ -1,0 +1,22 @@
+name: portfolio-qa
+on: { push: { branches: [main] }, pull_request: {}, workflow_dispatch: {} }
+permissions: { contents: read }
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    strategy: { fail-fast: false, matrix: { project: [chromium, firefox, webkit] } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.project }}
+      - run: npx playwright test --project=${{ matrix.project }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.project }}-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore

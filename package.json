@@ -1,0 +1,17 @@
+{
+  "name": "lan-device-qa-showcase",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node demo/server.mjs",
+    "test": "playwright test --project=chromium",
+    "test:cross-browser": "playwright test --project=chromium --project=firefox --project=webkit",
+    "test:critical": "playwright test tests/notes-ui.spec.mjs --project=chromium",
+    "test:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "ws": "^8.21.0"
+  }
+}

@@ -1,0 +1,8 @@
+appId: ${APP_ID}
+name: P1 physical session lifecycle
+tags: [p1, physical, hybrid]
+---
+- launchApp
+- tapOn: "Start session"
+# Deliberate human approval is required for any platform capture/permission UI.
+- assertVisible: "Stop session"
