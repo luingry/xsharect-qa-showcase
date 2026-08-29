@@ -14,4 +14,4 @@ Acceptance date: 2026-08-29.
 
 The physical results are historical observations from the private project, not replayable evidence in this repository. No screenshots, APKs, device logs, device identifiers, addresses, credentials, or proprietary artifacts are versioned. P2 covers multi-device discovery, battery/thermal measurement, extended soak tests, and OEM-specific behavior.
 
-The synthetic server is reset through a test-only endpoint before and after ordinary browser tests; reset responses and the deliberate disconnect response must be successful. Browser console and uncaught page errors are test failures, including in the two manually created note-session pages.
+The synthetic server is reset through a test-only endpoint before and after ordinary browser tests; reset responses and the deliberate disconnect response must be successful. Unexpected browser console and uncaught page errors are test failures, including in the two manually created note-session pages. The reconnect case permits only WebKit's exact console diagnostic caused by the deliberate WebSocket close.

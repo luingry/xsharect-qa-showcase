@@ -1,9 +1,17 @@
 import { test, expect } from './fixtures.mjs';
 
-test('shows reconnect feedback after an intentional synthetic interruption', { tag: ['@mock'] }, async ({ connectedPage, request, baseURL }) => {
-  const disconnect = await request.post(`${baseURL}/api/qa/disconnect`);
-  expect(disconnect.ok(), 'synthetic disconnect request succeeds').toBeTruthy();
-  await expect(connectedPage.getByRole('status')).toContainText('Connection interrupted');
+test.describe('intentional WebSocket interruption', () => {
+  test.use({
+    allowedConsoleErrorPatterns: [
+      "^WebSocket connection to 'ws://127\\.0\\.0\\.1:\\d+/ws' failed: Received invalid WebSocket response from the server$",
+    ],
+  });
+
+  test('shows reconnect feedback after an intentional synthetic interruption', { tag: ['@mock'] }, async ({ connectedPage, request, baseURL }) => {
+    const disconnect = await request.post(`${baseURL}/api/qa/disconnect`);
+    expect(disconnect.ok(), 'synthetic disconnect request succeeds').toBeTruthy();
+    await expect(connectedPage.getByRole('status')).toContainText('Connection interrupted');
+  });
 });
 
 const viewports = [

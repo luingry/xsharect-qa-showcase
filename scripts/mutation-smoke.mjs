@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 
 const probes = [
   ['accept_invalid_auth', 'tests/auth-api.spec.mjs', 'rejects an invalid access code'],
@@ -13,11 +14,27 @@ function runProbe({ file, port, fault }) {
     env: { ...process.env, PORT: String(port), PW_RETRIES: '0', PW_EXPECT_TIMEOUT: '1000', ...(fault ? { QA_FAULT_MODE: fault } : {}) },
   });
   const output = `${result.stdout || ''}${result.stderr || ''}`;
+  const junit = fs.existsSync('test-results/junit.xml')
+    ? fs.readFileSync('test-results/junit.xml', 'utf8')
+    : '';
   process.stdout.write(output);
-  return { status: result.status, output };
+  return { status: result.status, output, junit };
 }
 
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const escapeXml = (value) => value
+  .replaceAll('&', '&amp;')
+  .replaceAll('"', '&quot;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;');
+
+function targetFailed(junit, title) {
+  const expectedTitle = escapeXml(title);
+  const testcases = junit.match(/<testcase\b[\s\S]*?<\/testcase>/g) || [];
+  return testcases.some((testcase) => {
+    const name = testcase.match(/<testcase\b[^>]*\bname="([^"]*)"/)?.[1] || '';
+    return name.includes(expectedTitle) && testcase.includes('<failure');
+  });
+}
 
 for (const [index, [fault, file, title]] of probes.entries()) {
   const port = 4400 + index;
@@ -25,9 +42,8 @@ for (const [index, [fault, file, title]] of probes.entries()) {
   if (baseline.status !== 0) throw new Error(`Baseline is not green for ${fault}; refusing to classify a mutation failure as proof.`);
 
   const mutant = runProbe({ file, port: port + 10, fault });
-  const targetFailure = new RegExp(`\\bx\\s+\\d+\\s+\\[chromium\\]\\s+›[^\\r\\n]*${escapeRegex(title)}`, 'i');
   const hasPlaywrightFailure = /\b[1-9]\d* failed\b/i.test(mutant.output)
-    && targetFailure.test(mutant.output);
+    && targetFailed(mutant.junit, title);
   if (mutant.status === 0 || !hasPlaywrightFailure) {
     throw new Error(`Mutation ${fault} was not killed by an asserted Playwright test (status=${mutant.status}).`);
   }

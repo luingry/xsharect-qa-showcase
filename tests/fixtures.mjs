@@ -1,6 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 
 export const test = base.extend({
+  allowedConsoleErrorPatterns: [[], { option: true }],
   _testState: [async ({ request, baseURL }, use) => {
     const resetBefore = await request.post(`${baseURL}/api/qa/reset`);
     expect(resetBefore.ok(), 'test-state reset before test succeeds').toBeTruthy();
@@ -11,9 +12,13 @@ export const test = base.extend({
       expect(resetAfter.ok(), 'test-state reset after test succeeds').toBeTruthy();
     }
   }, { auto: true }],
-  page: async ({ page }, use) => {
+  page: async ({ page, allowedConsoleErrorPatterns }, use) => {
     const runtimeErrors = [];
-    page.on('console', (message) => { if (message.type() === 'error') runtimeErrors.push(`console: ${message.text()}`); });
+    page.on('console', (message) => {
+      if (message.type() !== 'error') return;
+      const expected = allowedConsoleErrorPatterns.some((source) => new RegExp(source).test(message.text()));
+      if (!expected) runtimeErrors.push(`console: ${message.text()}`);
+    });
     page.on('pageerror', (error) => runtimeErrors.push(`pageerror: ${error}`));
     await use(page);
     expect(runtimeErrors, `unexpected browser runtime errors: ${runtimeErrors.join('\n')}`).toEqual([]);
