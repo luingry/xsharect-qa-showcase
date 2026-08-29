@@ -5,6 +5,8 @@ test('rejects an invalid access code', { tag: ['@mock', '@negative'] }, async ({
   await page.locator('#accessCode').fill('wrong');
   await page.getByRole('button', { name: 'Connect' }).click();
   await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.locator('#authCard')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#app')).toHaveClass(/hidden/);
 });
 
 test('connects with the synthetic access code', { tag: ['@mock'] }, async ({ connectedPage }) => {

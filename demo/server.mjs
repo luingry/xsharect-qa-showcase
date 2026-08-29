@@ -11,6 +11,7 @@ const token = 'synthetic-session-token';
 const notes = new Map();
 const peers = new Set();
 let sequence = 0;
+const fault = process.env.QA_FAULT_MODE || '';
 
 const json = (res, status, body) => { res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
 const allowed = (req) => req.headers.authorization === `Bearer ${token}`;
@@ -22,7 +23,8 @@ const broadcast = (message) => { const raw = JSON.stringify(message); for (const
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   if (url.pathname === '/api/health') return json(res, 200, { ok: true, demo: true });
-  if (url.pathname === '/api/qa/disconnect' && req.method === 'POST') { for (const peer of peers) peer.close(1012, 'synthetic interruption'); return json(res, 200, { closed: true }); }
+  if (url.pathname === '/api/qa/reset' && req.method === 'POST') { notes.clear(); sequence = 0; return json(res, 200, { reset: true }); }
+  if (url.pathname === '/api/qa/disconnect' && req.method === 'POST') { if (fault !== 'ignore_disconnect') for (const peer of peers) peer.close(1012, 'synthetic interruption'); return json(res, 200, { closed: fault !== 'ignore_disconnect' }); }
   if (url.pathname.startsWith('/api/notes')) {
     if (!allowed(req)) return json(res, 401, { error: 'unauthorized' });
     if (url.pathname === '/api/notes' && req.method === 'GET') return json(res, 200, { notes: [...notes.values()].sort((a, b) => b.updatedAt - a.updatedAt).map(summary) });
@@ -32,7 +34,7 @@ const server = http.createServer(async (req, res) => {
       if (!body || typeof body !== 'object') return json(res, 400, { error: 'invalid_json' });
       const id = body.id || `note-${++sequence}`;
       const note = { id, title: String(body.title || 'Untitled'), body: String(body.body || ''), updatedAt: Date.now() };
-      notes.set(id, note); broadcast({ type: 'notes_changed' }); return json(res, 200, { note: serialize(note) });
+      notes.set(id, note); if (fault !== 'drop_notes_broadcast') broadcast({ type: 'notes_changed' }); return json(res, 200, { note: serialize(note) });
     }
     if (url.pathname.startsWith('/api/notes/') && req.method === 'GET') { const note = notes.get(url.pathname.split('/').pop()); return note ? json(res, 200, { note: serialize(note) }) : json(res, 404, { error: 'not_found' }); }
     if (url.pathname.startsWith('/api/notes/') && req.method === 'DELETE') { const ok = notes.delete(url.pathname.split('/').pop()); if (ok) broadcast({ type: 'notes_changed' }); return json(res, ok ? 200 : 404, { ok }); }
@@ -49,7 +51,7 @@ const server = http.createServer(async (req, res) => {
 const wss = new WebSocketServer({ server, path: '/ws' });
 wss.on('connection', (ws) => {
   peers.add(ws); ws.send(JSON.stringify({ type: 'hello', authRequired: true }));
-  ws.on('message', (raw) => { let message; try { message = JSON.parse(String(raw)); } catch { return; } if (message.type === 'auth') ws.send(JSON.stringify({ type: 'auth', ok: message.code === accessCode, token: message.code === accessCode ? token : undefined })); });
+  ws.on('message', (raw) => { let message; try { message = JSON.parse(String(raw)); } catch { return; } if (message.type === 'auth') { const ok = fault === 'accept_invalid_auth' || message.code === accessCode; ws.send(JSON.stringify({ type: 'auth', ok, token: ok ? token : undefined })); } });
   ws.on('close', () => peers.delete(ws));
 });
 server.listen(port, '127.0.0.1', () => console.log(`Synthetic QA demo: http://127.0.0.1:${port}`));

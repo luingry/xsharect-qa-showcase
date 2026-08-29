@@ -41,6 +41,7 @@ npx playwright install
 npm test
 npm run test:critical
 npm run test:cross-browser
+npm run test:oracles
 ```
 
 `npm test` starts the synthetic local server automatically. Reports are written to `playwright-report/` and JUnit XML to `test-results/junit.xml`; traces are captured on first retry and video/screenshots only on failure.
@@ -53,13 +54,13 @@ See the [evidence summary](docs/RESULTS-SUMMARY.md) for the exact public-suite c
 
 P2 is explicitly excluded: multi-device discovery, battery/thermal measurement, extended soak tests, and OEM-specific behavior.
 
-## Interview talking points
+## Design decisions and trade-offs
 
-- How do you prevent a mock from drifting from a production contract?
-- Why do WebSocket fan-out tests require separate browser contexts?
-- Which assertions belong in a fast PR gate versus a physical-device runbook?
-- How do traces, JUnit, videos and screenshots make failure triage reproducible?
-- How do you separate testability improvements from changes to user behavior?
+- **Synthetic demo, explicit boundary.** The public suite executes a small, owned HTTP/WebSocket contract rather than claiming to exercise the private Android product. It makes the repository safe to share while preserving repeatable evidence for authentication, synchronization and recovery behavior. Physical outcomes are labelled as sanitized private acceptance, never as public-suite output.
+- **Reset state and unique data.** Every browser test resets the demo state through a test-only endpoint, and cross-session tests use isolated contexts plus cleanup in `finally`. That removes order dependence while keeping the synchronization path real inside the synthetic stack.
+- **Observable failure, not only happy paths.** Invalid authentication must leave the app shell locked; responsive checks measure clipping and minimum control size; runtime console and page errors fail the test. The suite checks what a user can observe rather than implementation-only flags.
+- **Controlled mutation smoke.** `npm run test:oracles` deliberately sabotages authentication, note broadcast and disconnect behavior. It succeeds only when the corresponding test fails, providing a lightweight guard against assertions that can stay green after a meaningful regression.
+- **Fast browser gate plus device runbook.** Playwright gives rapid multi-browser feedback and artifacts. MediaProjection, encoder behavior, OEM settings and real transport remain device-bound checks because replacing them with a browser mock would overstate coverage.
 
 ## Security and contribution
 

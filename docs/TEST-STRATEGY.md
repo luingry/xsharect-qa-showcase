@@ -21,3 +21,6 @@ The bottom layers run in CI. The top layer requires a real device, deliberate co
 3. Tag test metadata (`@mock`, `@negative`) for selection and reporting.
 4. Use two browser contexts to prevent local storage/session sharing from hiding synchronization defects.
 5. Preserve artifacts on failure, not in version control.
+6. Reset synthetic server state before and after each ordinary test, and assert the reset response succeeds rather than assuming cleanup happened.
+7. Treat browser console errors and uncaught page errors as failures, including pages manually created for cross-session coverage.
+8. Verify assertion sensitivity with controlled mutations: a baseline targeted test must pass before its deliberately sabotaged equivalent is accepted as a killed mutant.

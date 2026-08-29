@@ -8,6 +8,7 @@
     "test": "playwright test --project=chromium",
     "test:cross-browser": "playwright test --project=chromium --project=firefox --project=webkit",
     "test:critical": "playwright test tests/notes-ui.spec.mjs --project=chromium",
+    "test:oracles": "node scripts/mutation-smoke.mjs",
     "test:report": "playwright show-report"
   },
   "devDependencies": {

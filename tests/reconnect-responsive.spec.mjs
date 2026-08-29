@@ -1,7 +1,8 @@
 import { test, expect } from './fixtures.mjs';
 
 test('shows reconnect feedback after an intentional synthetic interruption', { tag: ['@mock'] }, async ({ connectedPage, request, baseURL }) => {
-  await request.post(`${baseURL}/api/qa/disconnect`);
+  const disconnect = await request.post(`${baseURL}/api/qa/disconnect`);
+  expect(disconnect.ok(), 'synthetic disconnect request succeeds').toBeTruthy();
   await expect(connectedPage.getByRole('status')).toContainText('Connection interrupted');
 });
 
@@ -17,6 +18,14 @@ for (const [label, width, height] of viewports) {
     await page.goto(baseURL);
     const fitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
     expect(fitsViewport).toBeTruthy();
+    for (const selector of ['#authCard', '#accessCode', '#connectButton']) {
+      const box = await page.locator(selector).boundingBox();
+      expect(box, `${selector} is visible`).not.toBeNull();
+      expect(box.x, `${selector} starts inside viewport`).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, `${selector} is not clipped`).toBeLessThanOrEqual(width + 1);
+    }
+    const connect = await page.locator('#connectButton').boundingBox();
+    expect(connect.height, 'Connect remains a touch-sized target').toBeGreaterThanOrEqual(44);
   });
 }
 
@@ -24,5 +33,11 @@ test('has keyboard-reachable, named controls', { tag: ['@mock'] }, async ({ page
   await page.goto(baseURL);
   await page.keyboard.press('Tab');
   await expect(page.locator(':focus')).toHaveAttribute('id', 'accessCode');
-  await expect(page.getByRole('button', { name: 'Connect' })).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(page.locator(':focus')).toHaveAttribute('id', 'connectButton');
+  await page.locator('#accessCode').fill('portfolio-demo');
+  await page.keyboard.press('Tab');
+  await expect(page.locator(':focus')).toHaveAttribute('id', 'connectButton');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#app')).not.toHaveClass(/hidden/);
 });
